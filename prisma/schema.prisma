@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String        @id @default(cuid()) @map("_id")
+  name                   String?       @map("name")
+  email                  String?       @unique @map("email")
+  emailVerified          DateTime?     @map("email_verified")
+  image                  String?       @map("image")
+  githubLogin            String?       @unique @map("github_login")
+  statsJson              String?       @map("stats_json")
+  level                  Int           @default(1) @map("level")
+  xp                     Int           @default(0) @map("xp")
+  title                  String?       @default("Realmwalker") @map("title")
+  customTheme            String?       @default("void") @map("custom_theme")
+  customBanner           String?       @default("default") @map("custom_banner")
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+  accounts               Account[]
+  sessions               Session[]
+  achievements           UserAchievement[]
+  sentFriendRequests     Friendship[]  @relation("FriendRequester")
+  receivedFriendRequests Friendship[]  @relation("FriendAddressee")
+  profileViewsReceived   ProfileView[] @relation("ProfileSubject")
+  profileViewsMade       ProfileView[] @relation("ProfileViewer")
+  battleLogs             BattleLog[]
+  battlesInitiated       Battle[]       @relation("BattleInitiator")
+  battlesReceived        Battle[]       @relation("BattleReceiver")
+  guildMemberships       GuildMember[]
+  quests                 UserQuest[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  addressee   User             @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  requester   User             @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+}
+
+model ProfileView {
+  id        String   @id @default(cuid())
+  viewerId  String
+  subjectId String
+  viewedAt  DateTime @default(now())
+  subject   User     @relation("ProfileSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+  viewer    User     @relation("ProfileViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId, viewedAt])
+}
+
+model BattleLog {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String   // emoji or icon name
+  category    String   // "github", "social", "battle", "quest"
+  requirement Json     // criteria to unlock
+  xpReward    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime    @default(now())
+  progress      Json?       // track progress for multi-step achievements
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+model Battle {
+  id          String        @id @default(cuid())
+  initiatorId String
+  receiverId  String
+  status      BattleStatus  @default(PENDING)
+  initiatorHp Int           @default(100)
+  receiverHp  Int           @default(100)
+  winnerId    String?
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  initiator User @relation("BattleInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  receiver  User @relation("BattleReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([status, startedAt])
+}
+
+enum BattleStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  DECLINED
+}
+
+model Quest {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  type        QuestType
+  requirement Json     // GitHub API criteria
+  xpReward    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  userQuests  UserQuest[]
+}
+
+enum QuestType {
+  GITHUB_STARS
+  GITHUB_COMMITS
+  GITHUB_PRS
+  GITHUB_ISSUES
+  SOCIAL_FRIENDS
+  BATTLE_WINS
+}
+
+model UserQuest {
+  id        String      @id @default(cuid())
+  userId    String
+  questId   String
+  status    QuestStatus @default(ACTIVE)
+  progress  Json?       // track progress
+  startedAt DateTime    @default(now())
+  completedAt DateTime?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest Quest @relation(fields: [questId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questId])
+}
+
+enum QuestStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+model Guild {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  emblem      String?  // emoji or icon
+  createdAt   DateTime @default(now())
+
+  members GuildMember[]
+}
+
+model GuildMember {
+  id       String    @id @default(cuid())
+  userId   String
+  guildId  String
+  role     GuildRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, guildId])
+}
+
+enum GuildRole {
+  LEADER
+  OFFICER
+  MEMBER
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}

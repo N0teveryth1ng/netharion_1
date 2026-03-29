@@ -1,26 +1,112 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --n-void: #07060c;
+  --n-surface: #12101a;
+  --n-elevated: #1a1724;
+  --n-border: rgba(212, 175, 55, 0.18);
+  --n-gold: #e8d48b;
+  --n-gold-dim: #9a7b2c;
+  --n-ember: #c45c3e;
+  --n-ice: #7ec8e3;
+  --n-foreground: #f4f0e6;
+  --n-muted: #8a8498;
+  --n-star: rgba(255, 250, 235, 0.85);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-background: var(--n-void);
+  --color-foreground: var(--n-foreground);
+  --font-sans: var(--font-dm);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  background: var(--n-void);
+  color: var(--n-foreground);
+  font-family: var(--font-dm), system-ui, sans-serif;
+}
+
+/* Starfield */
+.neth-starfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(90, 60, 120, 0.35), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 100% 50%, rgba(30, 80, 120, 0.2), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(120, 40, 60, 0.15), transparent 45%),
+    var(--n-void);
+  overflow: hidden;
+}
+
+.neth-starfield::before,
+.neth-starfield::after {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, var(--n-star), transparent),
+    radial-gradient(1px 1px at 60% 70%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 50% 50%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(2px 2px at 80% 10%, rgba(232, 212, 139, 0.9), transparent);
+  background-size: 200% 200%;
+  opacity: 0.55;
+  animation: neth-drift 120s linear infinite;
+}
+
+.neth-starfield::after {
+  opacity: 0.35;
+  animation-duration: 180s;
+  animation-direction: reverse;
+}
+
+@keyframes neth-drift {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Gate ring */
+@keyframes neth-spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes neth-pulse-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 40px rgba(212, 175, 55, 0.25),
+      inset 0 0 30px rgba(90, 60, 120, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 64px rgba(212, 175, 55, 0.45),
+      inset 0 0 40px rgba(126, 200, 227, 0.15);
+  }
+}
+
+.neth-gate-ring {
+  animation: neth-spin-slow 48s linear infinite, neth-pulse-glow 6s ease-in-out infinite;
+}
+
+.text-gold-gradient {
+  background: linear-gradient(135deg, #fff6d4, var(--n-gold) 40%, var(--n-gold-dim));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
