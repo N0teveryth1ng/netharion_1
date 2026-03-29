@@ -94,14 +94,25 @@ export default function BattleArena() {
     }
   };
 
-  const challengeUser = (userId: string) => {
-    if (!socket || !session?.user?.id) return;
+  const challengeUser = async (userId: string) => {
+    if (!session?.user?.id) return;
     
-    socket.emit('battle-challenge', {
-      fromUserId: session.user.id,
-      toUserId: userId,
-      fromUserName: session.user.name || session.user.githubLogin,
-    });
+    try {
+      const response = await fetch('/api/battles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverId: userId }),
+      });
+      
+      if (response.ok) {
+        fetchBattles();
+      } else {
+        const error = await response.json();
+        console.error('Challenge failed:', error);
+      }
+    } catch (error) {
+      console.error('Failed to challenge:', error);
+    }
   };
 
   const acceptBattle = async (battleId: string) => {
