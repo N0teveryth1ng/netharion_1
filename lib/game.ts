@@ -6,6 +6,7 @@ export type GitHubStatsSnapshot = {
   contributionsLastYear: number;
   mergedPullRequests: number;
   topRepo: { name: string; stars: number; description: string | null } | null;
+  contributions: { date: string; count: number }[];
 };
 
 export function computeXp(s: GitHubStatsSnapshot): number {

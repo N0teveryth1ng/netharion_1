@@ -21,13 +21,19 @@ async function ghJson<T>(path: string, token: string): Promise<T> {
 async function graphqlContributions(
   token: string,
   login: string,
-): Promise<number> {
+): Promise<{ total: number; contributions: { date: string; count: number }[] }> {
   const query = `
     query ($login: String!) {
       user(login: $login) {
         contributionsCollection {
           contributionCalendar {
             totalContributions
+            weeks {
+              contributionDays {
+                date
+                contributionCount
+              }
+            }
           }
         }
       }
@@ -50,7 +56,10 @@ async function graphqlContributions(
     data?: {
       user?: {
         contributionsCollection?: {
-          contributionCalendar?: { totalContributions?: number };
+          contributionCalendar?: {
+            totalContributions?: number;
+            weeks?: { contributionDays?: { date: string; contributionCount: number }[] }[];
+          };
         };
       };
     };
@@ -59,10 +68,19 @@ async function graphqlContributions(
   if (body.errors?.length) {
     throw new Error(body.errors.map((e) => e.message).join("; "));
   }
-  return (
-    body.data?.user?.contributionsCollection?.contributionCalendar
-      ?.totalContributions ?? 0
-  );
+  
+  const calendar = body.data?.user?.contributionsCollection?.contributionCalendar;
+  const total = calendar?.totalContributions ?? 0;
+  const weeks = calendar?.weeks ?? [];
+  
+  const contributions: { date: string; count: number }[] = [];
+  for (const week of weeks) {
+    for (const day of week.contributionDays ?? []) {
+      contributions.push({ date: day.date, count: day.contributionCount });
+    }
+  }
+  
+  return { total, contributions };
 }
 
 type Repo = {
@@ -116,10 +134,14 @@ export async function fetchGitHubStats(
   }
 
   let contributionsLastYear = 0;
+  let contributions: { date: string; count: number }[] = [];
   try {
-    contributionsLastYear = await graphqlContributions(token, login);
+    const result = await graphqlContributions(token, login);
+    contributionsLastYear = result.total;
+    contributions = result.contributions;
   } catch {
     contributionsLastYear = 0;
+    contributions = [];
   }
 
   return {
@@ -132,5 +154,6 @@ export async function fetchGitHubStats(
     topRepo: top
       ? { name: top.name, stars: top.stargazers_count, description: top.description }
       : null,
+    contributions,
   };
 }
